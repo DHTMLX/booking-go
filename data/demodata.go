@@ -1,14 +1,13 @@
 package data
 
 import (
-	"log"
+	"time"
 
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
 func dataDown(tx *gorm.DB) {
-	log.Print("dowwwn")
 	must(tx.Exec("DELETE FROM `doctors`").Error)
 	must(tx.Exec("DELETE FROM `available_slots`").Error)
 	must(tx.Exec("DELETE FROM `slots`").Error)
@@ -16,8 +15,20 @@ func dataDown(tx *gorm.DB) {
 	must(tx.Exec("DELETE FROM `reservations`").Error)
 }
 
-// AvailableSlots []AvailableSlot `json:"available_slots"`
 func dataUp(tx *gorm.DB) {
+	now := time.Now().UTC()
+	y, m, d := now.Date()
+	day := int(now.Weekday())
+
+	getDate := func(days, hours, minutes int) int64 {
+		return time.Date(y, m, d+days, hours, minutes, 0, 0, time.UTC).UnixMilli()
+	}
+
+	getNextDate := func(next, hours, minutes int) int64 {
+		diff := (7 + next - day) % 7
+		return getDate(diff, hours, minutes)
+	}
+
 	units := []Doctor{
 		{
 			Title:    "Dr. Conrad Hubbard",
@@ -30,29 +41,47 @@ func dataUp(tx *gorm.DB) {
 				Count: 1245,
 				Stars: 4,
 			},
-			// SlotGap:  20,
-			// SlotSize: 20,
+			SlotGap:  20,
+			SlotSize: 20,
 			Slots: []Slot{
 				{
-					From:  "09:00",
-					To:    "17:00",
-					Size:  40,
-					Gap:   40,
-					Days:  pq.Int64Array{1, 2, 3, 4, 5},
-					Dates: pq.Int64Array{10000000000, 2, 3, 4, 5},
-					// Dates []int  `json:"dates"`
+					From: "09:00",
+					To:   "17:00",
+					Size: 40,
+					Gap:  10,
+					Days: pq.Int64Array{1, 2, 3, 4, 5},
+				},
+				{
+					From: "11:00",
+					To:   "19:00",
+					Days: pq.Int64Array{0, 6},
 				},
 			},
-			AvailableSlots: AvailableSlot{
-				Times:   pq.Int64Array{28937489273, 2397428934, 23784293874},
-				Lengths: pq.Int64Array{28937489273, 2397428934, 23784293874},
-			},
+			// AvailableSlots: []AvailableSlot{
+			// 	{
+			// 		Date: getNextDate(5, 9, 50),
+			// 		Size: 25,
+			// 	},
+			// 	{
+			// 		Date: getNextDate(6, 13, 40),
+			// 		Size: 15,
+			// 	},
+			// },
 			UsedSlots: []Reservation{
 				{
-					ClientName:    "eduard",
-					ClientEmail:   "blabla@gmail.com",
-					ClientDetails: "blabla BLA",
-					Date:          2000000000,
+					Date: getNextDate(5, 9, 50),
+					ReservationForm: ReservationForm{
+						ClientName:  "name1",
+						ClientEmail: "name1@gmail.com",
+					},
+				},
+				{
+					Date: getNextDate(6, 13, 40),
+					ReservationForm: ReservationForm{
+						ClientName:    "name2",
+						ClientEmail:   "name2@gmail.com",
+						ClientDetails: "...",
+					},
 				},
 			},
 		},
