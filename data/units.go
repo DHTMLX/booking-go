@@ -15,16 +15,12 @@ type Unit struct {
 
 	Review Review `json:"review"`
 
-	SlotGap  int `json:"slot_gap"`
-	SlotSize int `json:"slot_size"`
+	SlotGap  int `json:"slotGap,omitempty"`
+	SlotSize int `json:"slotSize,omitempty"`
 
-	Slots []Slot `gorm:"foreignkey:DoctorID"`
-	// UsedSlots      []Reservation `gorm:"foreignkey:DoctorID"`
-	// AvailableSlots AvailableSlot `gorm:"foreignkey:DoctorID"`
-
-	// Slots          []Schedule `json:"slots"`
-	AvailableSlots []int64 `json:"availableSlots,omitempty"`
-	UsedSlots      []int64 `json:"usedSlots,omitempty"`
+	Slots          []Slot     `json:"slots,omitempty"`
+	AvailableSlots [][2]int64 `json:"availableSlots,omitempty"`
+	UsedSlots      []int64    `json:"usedSlots,omitempty"`
 }
 
 type UnitsDAO struct {
@@ -48,13 +44,59 @@ func (d *UnitsDAO) closeTX(tx *gorm.DB, err error) {
 }
 
 func (d *UnitsDAO) GetAll() ([]Unit, error) {
-	// doctors := make([]Doctor, 0)
-	// err := d.db.Preload("Review").Preload("Slots").Preload("AvailableSlots").Preload("UsedSlots").Find(&doctors).Error
+	doctors := make([]Doctor, 0)
+	err := d.db.
+		Preload("Review").
+		Preload("Slots").
+		Preload("AvailableSlots").
+		Preload("UsedSlots").
+		Find(&doctors).Error
 
-	// units := make([]Unit, 0, len(doctors))
-	// for _, doctor := range doctors {
-	// 	unit := Unit{}
-	// }
+	units := make([]Unit, len(doctors))
+	for i, doctor := range doctors {
+		slots := doctor.Slots
+		if len(doctor.AvailableSlots) > 0 {
+			slots = []Slot{}
+		}
 
-	return nil, nil // Units, err
+		booked := make(map[int64]struct{}, len(doctor.UsedSlots))
+		usedSlots := make([]int64, len(doctor.UsedSlots))
+		for j, slot := range doctor.UsedSlots {
+			booked[slot.Date] = struct{}{}
+			usedSlots[j] = slot.Date
+		}
+
+		availableSlots := make([][2]int64, 0, len(doctor.AvailableSlots))
+		for _, slot := range doctor.AvailableSlots {
+			if _, ok := booked[slot.Date]; ok {
+				continue
+			}
+
+			availableSlots = append(availableSlots, [2]int64{
+				slot.Date,
+				int64(slot.Size),
+			})
+		}
+
+		units[i] = Unit{
+			ID:       doctor.ID,
+			Title:    doctor.Title,
+			Category: doctor.Category,
+			SubTitle: doctor.SubTitle,
+			Details:  doctor.Details,
+			Preview:  doctor.Preview,
+			Price:    doctor.Price,
+
+			Review: doctor.Review,
+
+			SlotGap:  doctor.SlotGap,
+			SlotSize: doctor.SlotSize,
+
+			Slots:          slots,
+			AvailableSlots: availableSlots,
+			UsedSlots:      usedSlots,
+		}
+	}
+
+	return units, err
 }

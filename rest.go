@@ -14,7 +14,7 @@ func initRoutes(r chi.Router, dao *data.DAO) { // , hub *go_remote.Hub) {
 		sendResponse(w, data, err)
 	})
 
-	r.Post("/reservations", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/doctors/reservations", func(w http.ResponseWriter, r *http.Request) {
 		item := data.Reservation{}
 		err := parseFormObject(w, r, &item)
 		if err != nil {
