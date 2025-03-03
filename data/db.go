@@ -27,9 +27,9 @@ func NewDAO(config *DBConfig) *DAO {
 	}
 
 	db.AutoMigrate(&Doctor{})
+	db.AutoMigrate(&Review{})
 	db.AutoMigrate(&Slot{})
 	db.AutoMigrate(&AvailableSlot{})
-	db.AutoMigrate(&Review{})
 	db.AutoMigrate(&Reservation{})
 
 	dao := DAO{

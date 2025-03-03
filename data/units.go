@@ -68,14 +68,12 @@ func (d *UnitsDAO) GetAll() ([]Unit, error) {
 
 		availableSlots := make([][2]int64, 0, len(doctor.AvailableSlots))
 		for _, slot := range doctor.AvailableSlots {
-			if _, ok := booked[slot.Date]; ok {
-				continue
+			if _, exists := booked[slot.Date]; !exists {
+				availableSlots = append(availableSlots, [2]int64{
+					slot.Date,
+					int64(slot.Size),
+				})
 			}
-
-			availableSlots = append(availableSlots, [2]int64{
-				slot.Date,
-				int64(slot.Size),
-			})
 		}
 
 		units[i] = Unit{

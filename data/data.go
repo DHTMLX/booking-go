@@ -35,7 +35,7 @@ type Slot struct {
 	To       string        `json:"to"`
 	Size     int           `json:"size,omitempty"`
 	Gap      int           `json:"gap,omitempty"`
-	Days     pq.Int64Array `json:"days,omitempty" gorm:"type:integer[]"`
+	Days     pq.Int32Array `json:"days,omitempty" gorm:"type:integer[]"`
 	Dates    pq.Int64Array `json:"dates,omitempty" gorm:"type:integer[]"`
 }
 

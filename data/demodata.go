@@ -9,9 +9,9 @@ import (
 
 func dataDown(tx *gorm.DB) {
 	must(tx.Exec("DELETE FROM `doctors`").Error)
-	must(tx.Exec("DELETE FROM `available_slots`").Error)
-	must(tx.Exec("DELETE FROM `slots`").Error)
 	must(tx.Exec("DELETE FROM `reviews`").Error)
+	must(tx.Exec("DELETE FROM `slots`").Error)
+	must(tx.Exec("DELETE FROM `available_slots`").Error)
 	must(tx.Exec("DELETE FROM `reservations`").Error)
 }
 
@@ -20,13 +20,31 @@ func dataUp(tx *gorm.DB) {
 	y, m, d := now.Date()
 	day := int(now.Weekday())
 
-	getDate := func(days, hours, minutes int) int64 {
+	// days, hours, minutes
+	getDate := func(params ...int) int64 {
+		var days, hours, minutes int
+
+		switch len(params) {
+		case 3:
+			minutes = params[2]
+			fallthrough
+		case 2:
+			hours = params[1]
+			fallthrough
+		case 1:
+			days = params[0]
+		}
+
 		return time.Date(y, m, d+days, hours, minutes, 0, 0, time.UTC).UnixMilli()
 	}
 
-	getNextDate := func(next, hours, minutes int) int64 {
-		diff := (7 + next - day) % 7
-		return getDate(diff, hours, minutes)
+	// next weekDay, hours, minutes
+	getNextDate := func(params ...int) int64 {
+		if len(params) > 0 {
+			params[0] = (7 + params[0] - day) % 7
+		}
+
+		return getDate(params...)
 	}
 
 	units := []Doctor{
@@ -49,161 +67,174 @@ func dataUp(tx *gorm.DB) {
 					To:   "17:00",
 					Size: 40,
 					Gap:  10,
-					Days: pq.Int64Array{1, 2, 3, 4, 5},
+					Days: pq.Int32Array{1, 2, 3, 4, 5},
 				},
 				{
 					From: "11:00",
 					To:   "19:00",
-					Days: pq.Int64Array{0, 6},
+					Days: pq.Int32Array{0, 6},
 				},
 			},
-			// AvailableSlots: []AvailableSlot{
-			// 	{
-			// 		Date: getNextDate(5, 9, 50),
-			// 		Size: 25,
-			// 	},
-			// 	{
-			// 		Date: getNextDate(6, 13, 40),
-			// 		Size: 15,
-			// 	},
-			// },
 			UsedSlots: []Reservation{
 				{
 					Date: getNextDate(5, 9, 50),
 					ReservationForm: ReservationForm{
-						ClientName:  "name1",
-						ClientEmail: "name1@gmail.com",
+						ClientName:  "James King",
+						ClientEmail: "james.king@booking.demo",
 					},
 				},
 				{
 					Date: getNextDate(6, 13, 40),
 					ReservationForm: ReservationForm{
-						ClientName:    "name2",
-						ClientEmail:   "name2@gmail.com",
-						ClientDetails: "...",
+						ClientName:    "Lily Wilson",
+						ClientEmail:   "lily.wilson@booking.demo",
+						ClientDetails: `I'll be early.`,
 					},
 				},
 			},
 		},
-		// },
-		// {
-		// 	Title:    "Dr. Debra Weeks",
-		// 	Category: "Allergist",
-		// 	SubTitle: "7 years of experience",
-		// 	Details:  "Silverstone Medical Center (Vanderbilt Avenue 13, Chestnut, New Zealand)",
-		// 	Preview:  "https://snippet.dhtmlx.com/codebase/data/booking/01/img/03.jpg",
-		// 	Price:    "$120",
-		// 	Review: Review{
-		// 		Count: 6545,
-		// 		Stars: 4,
-		// 	},
-		// 	SlotGap:  5,
-		// 	SlotSize: 45,
-		// 	Slots: append(
-		// 		[]Slot{
-		// 			// mon, wed 7:00-15:00
-		// 			RecurringSchedule(7*60, 15*60, "MO,WE"),
-		// 			// tue, thu 12:00-20:00
-		// 			RecurringSchedule(12*60, 20*60, "TU,TH"),
-		// 			// sat-sun 20:00-4:00
-		// 			RecurringSchedule(20*60, 4*60, "SA"), // or RecurringSchedule(20*60, 28*60, "SA")
-		// 		},
-		// 		// next wed 18:00-22:00
-		// 		genSchedule(18*60, 22*60, nextWeekDay(3), 1)...,
-		// 	),
-		// 	UsedSlots: genSlots(
-		// 		newSlots(nextWeekDay(1), 7*60+50),            // next mon 7:50
-		// 		newSlots(nextWeekDay(2), 13*60+40),           // next tue 13:40
-		// 		newSlots(nextWeekDay(3), 11*60+10),           // next wed 11:10
-		// 		newSlots(nextWeekDay(4), 14*60+30, 17*60+50), // next thu 14:30 17:50
-		// 		newSlots(nextWeekDay(4, 1), 17*60+50),        // after next thu 17:50
-		// 		newSlots(nextWeekDay(0), 2*60+40),            // next SUN 2:40; or newSlots(nextWeekDay(6), 24*60+2*60+40)
-		// 	),
-		// },
-		// {
-		// 	Title:    "Dr. Barnett Mueller",
-		// 	Category: "Ophthalmologist",
-		// 	SubTitle: "6 years of experience",
-		// 	Details:  "Navy Street 1, Kiskimere, United States",
-		// 	Preview:  "https://snippet.dhtmlx.com/codebase/data/booking/01/img/02.jpg",
-		// 	Price:    "$35",
-		// 	Review: Review{
-		// 		Count: 184,
-		// 		Stars: 3,
-		// 	},
-		// 	SlotGap:  0,
-		// 	SlotSize: 25,
-		// 	Slots: []Slot{
-		// 		// mon, wed, fri 9:00-17:00
-		// 		RecurringSchedule(9*60, 17*60, "MO,WE,FR"),
-		// 		// sat, sun 15:00-19:00
-		// 		RecurringSchedule(15*60, 19*60, "SA,SU"),
-		// 	},
-		// 	UsedSlots: genSlots(
-		// 		newSlots(nextWeekDay(1), 13*60+10),    // after next mon 13:10
-		// 		newSlots(nextWeekDay(1, 1), 12*60+45), // after next mon 12:45
-		// 		newSlots(nextWeekDay(3), 9*60+25),     // next wed 9:25
-		// 		newSlots(nextWeekDay(5), 11*60+55),    // next fri 11:55
-		// 		newSlots(nextWeekDay(5, 1), 11*60+30), // after next fri 11:30
-		// 		newSlots(nextWeekDay(6), 16*60+10),    // next sat 16:10
-		// 		newSlots(nextWeekDay(0), 17*60),       // next sun 17:00
-		// 	),
-		// },
-		// {
-		// 	Title:    "Dr. Myrtle Wise",
-		// 	Category: "Ophthalmologist",
-		// 	SubTitle: "4 years of experience",
-		// 	Details:  "Prescott Place 5, Freeburn, Bulgaria",
-		// 	Preview:  "https://snippet.dhtmlx.com/codebase/data/booking/01/img/01.jpg",
-		// 	Price:    "$40",
-		// 	Review: Review{
-		// 		Count: 829,
-		// 		Stars: 5,
-		// 	},
-		// 	SlotGap:  5,
-		// 	SlotSize: 25,
-		// 	Slots: append(
-		// 		[]Slot{
-		// 			// tue, thu 7:00-15:00
-		// 			RecurringSchedule(7*60, 15*60, "TU,TH"),
-		// 			// sat, sun 11:00-15:00
-		// 			RecurringSchedule(11*60, 15*60, "SA,SU"),
-		// 		},
-		// 		// next fri, sat 4:00-8:00
-		// 		genSchedule(4*60, 8*60, nextWeekDay(5), 2)...,
-		// 	),
-		// 	UsedSlots: genSlots(
-		// 		newSlots(nextWeekDay(2), 7*60, 10*60),    // next tue 7:00, 10:00
-		// 		newSlots(nextWeekDay(4), 9*60+30),        // next thu 9:30
-		// 		newSlots(nextWeekDay(5), 7*60+30),        // next fri 7:30
-		// 		newSlots(nextWeekDay(6), 11*60+30, 5*60), // next sat 11:30, 5:00
-		// 		newSlots(nextWeekDay(0), 12*60),          // next sun 12:00
-		// 	),
-		// },
-		// {
-		// 	Title:    "Dr. Browning Peck",
-		// 	Category: "Dentist",
-		// 	SubTitle: "11 years of experience",
-		// 	Details:  "Seacoast Terrace 174, Belvoir, Mauritania",
-		// 	Preview:  "https://snippet.dhtmlx.com/codebase/data/booking/01/img/12.jpg",
-		// 	Price:    "$175",
-		// 	Review: Review{
-		// 		Count: 391,
-		// 		Stars: 5,
-		// 	},
-		// 	SlotGap:  10,
-		// 	SlotSize: 60,
-		// 	Slots: []Slot{
-		// 		// thu, fri, sat, sun 9:00-17:00
-		// 		RecurringSchedule(9*60, 17*60, "TH,FR,SA,SU"),
-		// 	},
-		// 	UsedSlots: genSlots(
-		// 		newSlots(nextWeekDay(4), 11*60+20),       // next thu 11:20
-		// 		newSlots(nextWeekDay(5), 14*60+50),       // next fri 14:50
-		// 		newSlots(nextWeekDay(6), 9*60, 13*60+20), // next sat 9:00, 13:20
-		// 		newSlots(nextWeekDay(0), 14*60+50),       // next sun 14:50
-		// 	),
-		// },
+		{
+			Title:    "Dr. Debra Weeks",
+			Category: "Allergist",
+			SubTitle: "7 years of experience",
+			Details:  "Silverstone Medical Center (Vanderbilt Avenue 13, Chestnut, New Zealand)",
+			Preview:  "https://snippet.dhtmlx.com/codebase/data/booking/01/img/03.jpg",
+			Price:    "$120",
+			Review: Review{
+				Count: 6545,
+				Stars: 4,
+			},
+			SlotGap:  5,
+			SlotSize: 45,
+			Slots: []Slot{
+				{
+					From: "11:00",
+					To:   "19:00",
+					Size: 40,
+					Dates: pq.Int64Array{
+						getDate(1),
+						getDate(2),
+						getDate(3),
+					},
+				},
+			},
+			UsedSlots: []Reservation{
+				{
+					Date: getDate(2, 14),
+					ReservationForm: ReservationForm{
+						ClientName:  "Olivia Johnson",
+						ClientEmail: "olivia.johnson@booking.demo",
+					},
+				},
+			},
+		},
+		{
+			Title:    "Dr. Barnett Mueller",
+			Category: "Ophthalmologist",
+			SubTitle: "6 years of experience",
+			Details:  "Navy Street 1, Kiskimere, United States",
+			Preview:  "https://snippet.dhtmlx.com/codebase/data/booking/01/img/02.jpg",
+			Price:    "$35",
+			Review: Review{
+				Count: 184,
+				Stars: 3,
+			},
+			SlotSize: 25,
+			Slots: []Slot{
+				{
+					From: "15:00",
+					To:   "19:00",
+					Days: pq.Int32Array{1, 2, 3},
+				},
+				{
+					From: "09:00",
+					To:   "11:00",
+				},
+			},
+			UsedSlots: []Reservation{
+				{
+					Date: getNextDate(6, 10, 15),
+					ReservationForm: ReservationForm{
+						ClientName:  "Mia Adams",
+						ClientEmail: "mia.adams@booking.demo",
+					},
+				},
+			},
+		},
+		{
+			Title:    "Dr. Myrtle Wise",
+			Category: "Ophthalmologist",
+			SubTitle: "4 years of experience",
+			Details:  "Prescott Place 5, Freeburn, Bulgaria",
+			Preview:  "https://snippet.dhtmlx.com/codebase/data/booking/01/img/01.jpg",
+			Price:    "$40",
+			Review: Review{
+				Count: 829,
+				Stars: 5,
+			},
+			SlotGap:  5,
+			SlotSize: 25,
+			Slots: []Slot{
+				{
+					From: "07:00",
+					To:   "11:00",
+					Days: pq.Int32Array{1, 3, 5},
+				},
+				{
+					From: "15:00",
+					To:   "19:00",
+					Days: pq.Int32Array{2, 4},
+				},
+			},
+		},
+		{
+			Title:    "Dr. Browning Peck",
+			Category: "Dentist",
+			SubTitle: "11 years of experience",
+			Details:  "Seacoast Terrace 174, Belvoir, Mauritania",
+			Preview:  "https://snippet.dhtmlx.com/codebase/data/booking/01/img/12.jpg",
+			Price:    "$175",
+			Review: Review{
+				Count: 391,
+				Stars: 5,
+			},
+			SlotGap:  10,
+			SlotSize: 60,
+			Slots: []Slot{ // slots will be ignored
+				{
+					From:  "09:00",
+					To:    "11:00",
+					Dates: pq.Int64Array{getDate(1)},
+				},
+			},
+			AvailableSlots: []AvailableSlot{
+				{
+					Date: getDate(0, 14),
+					Size: 40,
+				},
+				{
+					Date: getDate(0, 19, 35),
+					Size: 25,
+				},
+				{
+					Date: getDate(1, 9, 55),
+					Size: 35,
+				},
+				{
+					Date: getDate(1, 15, 25),
+					Size: 20,
+				},
+			},
+			UsedSlots: []Reservation{
+				{
+					Date: getDate(1, 15, 25),
+					ReservationForm: ReservationForm{
+						ClientName:  "William Green",
+						ClientEmail: "william.green@booking.demo",
+					},
+				},
+			},
+		},
 	}
 
 	err := tx.Create(units).Error
